@@ -5,6 +5,7 @@ import { searchBing, searchHackerNews, deduplicateResults } from '../services/se
 import { searchSogou, searchBilibili, searchWeibo, detectAndFetchAccount } from '../services/chinaSearch.js';
 import { analyzeContent, expandKeyword, preMatchKeyword } from '../services/ai.js';
 import { sendHotspotEmail } from '../services/email.js';
+import { fetchGithubTrending } from '../services/githubTrending.js';
 import type { SearchResult } from '../types.js';
 
 // 新鲜度过滤：丢弃超过指定小时数的内容
@@ -52,6 +53,15 @@ export async function runHotspotCheck(io: Server): Promise<void> {
 
   console.log(`Checking ${keywords.length} keywords...`);
 
+  // 抓取 GitHub Trending
+  let trendingResults: SearchResult[] = [];
+  try {
+    trendingResults = await fetchGithubTrending();
+    console.log(`📊 Fetched ${trendingResults.length} GitHub trending repos`);
+  } catch (e) {
+    console.warn('Failed to fetch GitHub trending:', e);
+  }
+
   let newHotspotsCount = 0;
 
   for (const keyword of keywords) {
@@ -96,6 +106,17 @@ export async function runHotspotCheck(io: Server): Promise<void> {
       if (accountResult.results.length > 0) {
         allResults.push(...accountResult.results);
         console.log(`  AccountFetch: ${accountResult.results.length} results`);
+      }
+
+      // 添加匹配的 GitHub Trending 项目
+      const keywordLower = keyword.text.toLowerCase();
+      const matchedTrending = trendingResults.filter(item =>
+        item.title.toLowerCase().includes(keywordLower) ||
+        item.content.toLowerCase().includes(keywordLower)
+      );
+      if (matchedTrending.length > 0) {
+        allResults.push(...matchedTrending);
+        console.log(`  GitHub Trending: ${matchedTrending.length} matched`);
       }
 
       const sources = [

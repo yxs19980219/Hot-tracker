@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,60 +8,132 @@ datasource db {
 }
 
 model Keyword {
-  id        String    @id @default(uuid())
-  text      String    @unique
-  category  String?
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  hotspots  Hotspot[]
+  id             String        @id @default(uuid())
+  text           String        @unique
+  category       String?
+  isActive       Boolean       @default(true)
+  trackingPrompt String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  hotspots       Hotspot[]
+  trackedItems   TrackedItem[] @relation("KeywordTrackedItems")
 }
 
 model Hotspot {
-  id              String    @id @default(uuid())
-  title           String
-  content         String
-  url             String
-  source          String    // twitter, bing, google
-  sourceId        String?   // 原始推文ID等
-  isReal          Boolean   @default(true)
-  relevance       Int       @default(0)
-  relevanceReason String?   // AI 分析相关性的理由
-  keywordMentioned Boolean?  // 内容中是否直接提及了关键词
-  importance      String    @default("low")
-  summary         String?
-  viewCount       Int?
-  likeCount       Int?
-  retweetCount    Int?
-  replyCount      Int?      // 回复数
-  commentCount    Int?      // 评论数
-  quoteCount      Int?      // 引用/转引数
-  danmakuCount    Int?      // 弹幕数 (Bilibili)
-  authorName      String?   // 作者名称
-  authorUsername  String?   // 作者用户名
-  authorAvatar    String?   // 作者头像
-  authorFollowers Int?      // 作者粉丝数
-  authorVerified  Boolean?  // 作者是否认证
-  publishedAt     DateTime?
-  createdAt       DateTime  @default(now())
-  keywordId       String?
-  keyword         Keyword?  @relation(fields: [keywordId], references: [id], onDelete: SetNull)
+  id               String    @id @default(uuid())
+  title            String
+  content          String
+  url              String
+  source           String
+  sourceId         String?
+  isReal           Boolean   @default(true)
+  relevance        Int       @default(0)
+  relevanceReason  String?
+  keywordMentioned Boolean?
+  importance       String    @default("low")
+  summary          String?
+  viewCount        Int?
+  likeCount        Int?
+  retweetCount     Int?
+  replyCount       Int?
+  commentCount     Int?
+  quoteCount       Int?
+  danmakuCount     Int?
+  authorName       String?
+  authorUsername   String?
+  authorAvatar     String?
+  authorFollowers  Int?
+  authorVerified   Boolean?
+  publishedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  keywordId        String?
+  keyword          Keyword?  @relation(fields: [keywordId], references: [id], onDelete: SetNull)
 
   @@unique([url, source])
 }
 
 model Notification {
-  id        String   @id @default(uuid())
-  type      String   // hotspot, alert
-  title     String
-  content   String
-  isRead    Boolean  @default(false)
-  hotspotId String?
-  createdAt DateTime @default(now())
+  id            String   @id @default(uuid())
+  type          String
+  title         String
+  content       String
+  isRead        Boolean  @default(false)
+  hotspotId     String?
+  trackedItemId String?
+  createdAt     DateTime @default(now())
 }
 
 model Setting {
   id    String @id @default(uuid())
   key   String @unique
   value String
+}
+
+// ========== 追踪项（长期追踪库） ==========
+
+model TrackedItem {
+  id            String              @id @default(uuid())
+  title         String
+  canonicalUrl  String              @unique
+  url           String              // 用户输入的原始 URL
+  note          String?
+  trackingPrompt String?
+  isActive      Boolean             @default(true)
+  lastCheckedAt DateTime?
+  lastUpdateAt  DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  sources       TrackedItemSource[]
+  updates       TrackedItemUpdate[]
+  keywords      Keyword[]           @relation("KeywordTrackedItems")
+}
+
+// ========== 追踪源（系统内部使用） ==========
+
+model TrackedItemSource {
+  id              String      @id @default(uuid())
+  trackedItemId   String
+  trackedItem     TrackedItem @relation(fields: [trackedItemId], references: [id], onDelete: Cascade)
+
+  type            String      // 'github_repo' | 'rss' | 'changelog_page'
+  url             String
+  config          String?     // JSON 配置
+
+  isActive        Boolean     @default(true)
+  lastContentHash String?
+  lastCheckedAt   DateTime?
+  lastUpdateAt    DateTime?
+  createdAt       DateTime    @default(now())
+}
+
+// ========== 更新记录 ==========
+
+model TrackedItemUpdate {
+  id            String      @id @default(uuid())
+  trackedItemId String
+  trackedItem   TrackedItem @relation(fields: [trackedItemId], references: [id], onDelete: Cascade)
+
+  updateType    String
+  title         String
+  content       String
+  aiSummary     String?
+  aiAction      String?
+
+  sourceUrl     String?
+  isNotified    Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+}
+
+// ========== GitHub Trending 缓存 ==========
+
+model GithubTrending {
+  id          String   @id @default(uuid())
+  repoName    String   @unique
+  description String?
+  language    String?
+  starsToday  Int?
+  totalStars  Int?
+  url         String
+  fetchedAt   DateTime @default(now())
 }

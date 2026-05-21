@@ -10,9 +10,26 @@ import keywordsRouter from './routes/keywords.js';
 import hotspotsRouter from './routes/hotspots.js';
 import settingsRouter from './routes/settings.js';
 import notificationsRouter from './routes/notifications.js';
+import trackedItemsRouter from './routes/trackedItems.js';
 import { runHotspotCheck } from './jobs/hotspotChecker.js';
+import { runTrackingCheck } from './jobs/trackingChecker.js';
 
 dotenv.config();
+
+// 启动时从数据库同步 API Key 到环境变量
+async function syncApiKeyFromDb() {
+  try {
+    const setting = await prisma.setting.findUnique({ where: { key: 'deepseekApiKey' } });
+    if (setting?.value) {
+      process.env.DEEPSEEK_API_KEY = setting.value;
+      console.log('🔑 DeepSeek API Key synced from database');
+    }
+  } catch (error) {
+    console.error('Failed to sync API key from DB:', error);
+  }
+}
+
+syncApiKeyFromDb();
 
 const app = express();
 const httpServer = createServer(app);
@@ -32,6 +49,7 @@ app.use('/api/keywords', keywordsRouter);
 app.use('/api/hotspots', hotspotsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/tracked-items', trackedItemsRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -45,6 +63,16 @@ app.post('/api/check-hotspots', async (req, res) => {
     res.json({ message: 'Hotspot check completed' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to run hotspot check' });
+  }
+});
+
+// Manual trigger for tracking check
+app.post('/api/check-tracking', async (req, res) => {
+  try {
+    await runTrackingCheck(io);
+    res.json({ message: 'Tracking check completed' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to run tracking check' });
   }
 });
 
@@ -77,6 +105,17 @@ cron.schedule('*/30 * * * *', async () => {
   }
 });
 
+// Scheduled job: Run tracking check every 2 hours
+cron.schedule('0 */2 * * *', async () => {
+  console.log('🔄 Running scheduled tracking check...');
+  try {
+    await runTrackingCheck(io);
+    console.log('✅ Scheduled tracking check completed');
+  } catch (error) {
+    console.error('❌ Scheduled tracking check failed:', error);
+  }
+});
+
 // Export for use in other modules
 export { io };
 
@@ -88,6 +127,7 @@ httpServer.listen(PORT, () => {
   📡 Server running on http://localhost:${PORT}
   🔌 WebSocket ready
   ⏰ Hotspot check scheduled every 30 minutes
+  📦 Tracking check scheduled every 2 hours
   `);
 });
 

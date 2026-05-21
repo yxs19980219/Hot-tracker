@@ -81,66 +81,31 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 // Keywords API
 export const keywordsApi = {
   getAll: () => request<Keyword[]>('/keywords'),
-  
   getById: (id: string) => request<Keyword>(`/keywords/${id}`),
-  
   create: (data: { text: string; category?: string }) => 
-    request<Keyword>('/keywords', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    }),
-  
+    request<Keyword>('/keywords', { method: 'POST', body: JSON.stringify(data) }),
   update: (id: string, data: Partial<Keyword>) => 
-    request<Keyword>(`/keywords/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data)
-    }),
-  
-  delete: (id: string) => 
-    request<void>(`/keywords/${id}`, { method: 'DELETE' }),
-  
-  toggle: (id: string) => 
-    request<Keyword>(`/keywords/${id}/toggle`, { method: 'PATCH' })
+    request<Keyword>(`/keywords/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: string) => request<void>(`/keywords/${id}`, { method: 'DELETE' }),
+  toggle: (id: string) => request<Keyword>(`/keywords/${id}/toggle`, { method: 'PATCH' })
 };
 
 // Hotspots API
 export const hotspotsApi = {
-  getAll: (params?: { 
-    page?: number; 
-    limit?: number; 
-    source?: string; 
-    importance?: string; 
-    keywordId?: string;
-    isReal?: string;
-    timeRange?: string;
-    timeFrom?: string;
-    timeTo?: string;
-    sortBy?: string;
-    sortOrder?: string;
-  }) => {
+  getAll: (params?: { page?: number; limit?: number; source?: string; importance?: string; keywordId?: string; isReal?: string; timeRange?: string; timeFrom?: string; timeTo?: string; sortBy?: string; sortOrder?: string }) => {
     const searchParams = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== '') searchParams.append(key, String(value));
       });
     }
-    return request<{ data: Hotspot[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>(
-      `/hotspots?${searchParams}`
-    );
+    return request<{ data: Hotspot[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>(`/hotspots?${searchParams}`);
   },
-  
   getStats: () => request<Stats>('/hotspots/stats'),
-  
   getById: (id: string) => request<Hotspot>(`/hotspots/${id}`),
-  
   search: (query: string, sources?: string[]) => 
-    request<{ results: Hotspot[] }>('/hotspots/search', {
-      method: 'POST',
-      body: JSON.stringify({ query, sources })
-    }),
-  
-  delete: (id: string) => 
-    request<void>(`/hotspots/${id}`, { method: 'DELETE' })
+    request<{ results: Hotspot[] }>('/hotspots/search', { method: 'POST', body: JSON.stringify({ query, sources }) }),
+  delete: (id: string) => request<void>(`/hotspots/${id}`, { method: 'DELETE' })
 };
 
 // Notifications API
@@ -152,35 +117,89 @@ export const notificationsApi = {
         if (value !== undefined) searchParams.append(key, String(value));
       });
     }
-    return request<{ data: Notification[]; unreadCount: number; pagination: any }>(
-      `/notifications?${searchParams}`
-    );
+    return request<{ data: Notification[]; unreadCount: number; pagination: any }>(`/notifications?${searchParams}`);
   },
-  
-  markAsRead: (id: string) => 
-    request<Notification>(`/notifications/${id}/read`, { method: 'PATCH' }),
-  
-  markAllAsRead: () => 
-    request<void>('/notifications/read-all', { method: 'PATCH' }),
-  
-  delete: (id: string) => 
-    request<void>(`/notifications/${id}`, { method: 'DELETE' }),
-  
-  clear: () => 
-    request<void>('/notifications', { method: 'DELETE' })
+  markAsRead: (id: string) => request<Notification>(`/notifications/${id}/read`, { method: 'PATCH' }),
+  markAllAsRead: () => request<void>('/notifications/read-all', { method: 'PATCH' }),
+  delete: (id: string) => request<void>(`/notifications/${id}`, { method: 'DELETE' }),
+  clear: () => request<void>('/notifications', { method: 'DELETE' })
 };
 
 // Settings API
 export const settingsApi = {
   getAll: () => request<Record<string, string>>('/settings'),
-  
-  update: (settings: Record<string, string>) => 
-    request<void>('/settings', {
-      method: 'PUT',
-      body: JSON.stringify(settings)
-    })
+  update: (settings: Record<string, string>) =>
+    request<void>('/settings', { method: 'PUT', body: JSON.stringify(settings) }),
+  checkAi: () => request<{ configured: boolean; ok: boolean; message: string }>('/settings/check-ai')
 };
 
 // Manual trigger
 export const triggerHotspotCheck = () => 
   request<{ message: string }>('/check-hotspots', { method: 'POST' });
+
+// ========== Tracking APIs ==========
+
+export interface TrackedItem {
+  id: string;
+  title: string;
+  canonicalUrl: string;
+  url: string;
+  note: string | null;
+  trackingPrompt: string | null;
+  isActive: boolean;
+  lastCheckedAt: string | null;
+  lastUpdateAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  sources?: TrackedItemSource[];
+  keywords?: { id: string; text: string }[];
+  _count?: { updates: number };
+}
+
+export interface TrackedItemSource {
+  id: string;
+  trackedItemId: string;
+  type: string;
+  url: string;
+  config: string | null;
+  isActive: boolean;
+  lastCheckedAt: string | null;
+  lastUpdateAt: string | null;
+  createdAt: string;
+}
+
+export interface TrackedItemUpdate {
+  id: string;
+  trackedItemId: string;
+  updateType: string;
+  title: string;
+  content: string;
+  aiSummary: string | null;
+  aiAction: 'upgrade' | 'watch' | 'ignore' | 'urgent' | null;
+  sourceUrl: string | null;
+  isNotified: boolean;
+  createdAt: string;
+}
+
+export const trackedItemsApi = {
+  getAll: () => request<TrackedItem[]>('/tracked-items'),
+  getById: (id: string) => request<TrackedItem>(`/tracked-items/${id}`),
+  create: (data: { url: string; title?: string; note?: string; trackingPrompt?: string }) =>
+    request<TrackedItem>('/tracked-items', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: Partial<TrackedItem>) =>
+    request<TrackedItem>(`/tracked-items/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: string) => request<void>(`/tracked-items/${id}`, { method: 'DELETE' }),
+  toggle: (id: string) => request<TrackedItem>(`/tracked-items/${id}/toggle`, { method: 'PATCH' }),
+  getUpdates: (id: string, params?: { limit?: number; offset?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) searchParams.append(key, String(value));
+      });
+    }
+    return request<TrackedItemUpdate[]>(`/tracked-items/${id}/updates?${searchParams}`);
+  }
+};
+
+export const triggerTrackingCheck = () =>
+  request<{ message: string }>('/check-tracking', { method: 'POST' });

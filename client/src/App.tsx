@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Flame, Search, Plus, Bell, Trash2, 
+import {
+  Radar, Flame, Search, Plus, Bell, Trash2,
   ExternalLink, RefreshCw, X, Check, AlertTriangle,
   Zap, TrendingUp, Twitter, Globe, Eye, Activity, Clock, Target,
   ChevronLeft, ChevronRight,
   MessageCircle, Repeat2, Quote, User, Shield, ShieldAlert,
-  ChevronDown, ChevronUp, ChevronsUpDown, ThermometerSun, FileText
+  ChevronDown, ChevronUp, ChevronsUpDown, ThermometerSun, FileText,
+  Satellite, Settings
 } from 'lucide-react';
 import { 
   keywordsApi, hotspotsApi, notificationsApi, triggerHotspotCheck,
@@ -21,6 +22,9 @@ import FilterSortBar, { defaultFilterState, type FilterState } from './component
 import { sortHotspots } from './utils/sortHotspots';
 import { relativeTime, formatDateTime } from './utils/relativeTime';
 // TextGenerateEffect available for future use
+
+import TrackedItemsPage from './components/TrackedItemsPage';
+import SettingsModal from './components/SettingsModal';
 
 /** 计算热度综合指标（归一化 0-100） */
 function calcHeatScore(h: Hotspot): number {
@@ -57,7 +61,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'keywords' | 'search'>('dashboard');
+  const [showSettings, setShowSettings] = useState(false);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'keywords' | 'search' | 'tracking'>('dashboard');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [dashboardFilters, setDashboardFilters] = useState<FilterState>({ ...defaultFilterState });
   const [searchFilters, setSearchFilters] = useState<FilterState>({ ...defaultFilterState });
@@ -361,13 +366,13 @@ function App() {
             <div className="flex items-center gap-4">
               <div className="relative">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                  <Flame className="w-5 h-5 text-white" />
+                  <Radar className="w-5 h-5 text-white" />
                 </div>
                 <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-[#050510] animate-pulse" />
               </div>
               <div>
-                <h1 className="text-lg font-semibold text-white tracking-tight">HotPulse</h1>
-                <p className="text-xs text-slate-500">AI 热点雷达</p>
+                <h1 className="text-lg font-semibold text-white tracking-tight">Hot-tracker</h1>
+                <p className="text-xs text-slate-500">AI 追踪器</p>
               </div>
             </div>
 
@@ -436,6 +441,14 @@ function App() {
                     </motion.div>
                   )}
                 </AnimatePresence>
+
+              {/* Settings */}
+              <button
+                onClick={() => setShowSettings(true)}
+                className="relative p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all"
+              >
+                <Settings className="w-5 h-5 text-slate-400" />
+              </button>
               </div>
             </div>
           </div>
@@ -446,9 +459,10 @@ function App() {
       <main className="relative z-10 max-w-6xl mx-auto px-6 py-8">
         {/* Navigation Tabs */}
         <div className="flex gap-2 mb-8">
-          {([
+        {([
             { key: 'dashboard', label: '热点雷达', icon: Activity },
             { key: 'keywords', label: '监控词', icon: Target },
+            { key: 'tracking', label: '追踪', icon: Satellite },
             { key: 'search', label: '搜索', icon: Search },
           ] as const).map(({ key, label, icon: Icon }) => (
             <button
@@ -1114,7 +1128,13 @@ function App() {
             </div>
           </div>
         )}
+
+        {/* Tracking Tab */}
+        {activeTab === 'tracking' && (
+          <TrackedItemsPage onToast={showToast} />
+        )}
       </main>
+        <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
     </div>
   );
 }
