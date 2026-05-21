@@ -107,7 +107,6 @@ cd client && npm run dev        # http://localhost:5173
 
 首次启动后，打开前端页面，点击右上角齿轮图标，在弹窗中填入 DeepSeek API Key 即可使用。
 
-详细步骤请参阅 [docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md)。
 
 ## 环境变量
 
