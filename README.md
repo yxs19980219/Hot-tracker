@@ -85,18 +85,20 @@ hottrack/
 前置要求：Node.js ≥ 18、npm ≥ 9
 
 ```bash
+# 从项目根目录开始
+
 # 1. 安装后端依赖
 cd server && npm install
 
 # 2. 安装前端依赖
-cd ../client && npm install
+cd client && npm install
 
-# 3. 初始化数据库
-cd ../server
+# 3. 初始化数据库（确保在 server 目录下）
+cd server
 npx prisma generate
 npx prisma db push
 
-# 4. 启动服务（需两个终端）
+# 4. 启动服务（需两个终端窗口）
 # 终端 1：后端
 cd server && npm run dev        # http://localhost:3001
 # 终端 2：前端
